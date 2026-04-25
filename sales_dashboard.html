@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Dashboard 2024</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6f9;color:#1a1a2e;min-height:100vh;padding:24px}
+h1{font-size:22px;font-weight:600;color:#1a1a2e;margin-bottom:4px}
+.subtitle{font-size:13px;color:#666;margin-bottom:20px}
+.filter-row{display:flex;gap:8px;margin-bottom:20px;align-items:center}
+.filter-label{font-size:12px;color:#888;font-weight:500}
+.pill{font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid #ddd;color:#555;cursor:pointer;background:#fff;transition:all .15s}
+.pill.active,.pill:hover{background:#1a1a2e;color:#fff;border-color:#1a1a2e}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi{background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.kpi-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.kpi-value{font-size:24px;font-weight:600;color:#1a1a2e}
+.kpi-sub{font-size:12px;margin-top:5px;color:#888}
+.kpi-sub.pos{color:#1D9E75}
+.charts-row{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-title{font-size:13px;font-weight:600;color:#444;margin-bottom:16px;text-transform:uppercase;letter-spacing:.03em}
+.chart-wrap{position:relative;width:100%}
+.bottom-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.bar-item{margin-bottom:12px}
+.bar-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.bar-name{color:#333;font-weight:500}
+.bar-val{color:#888}
+.bar-bg{background:#f0f2f5;border-radius:4px;height:7px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.rep-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.rep-name{font-size:13px;font-weight:500;color:#333}
+.rep-rev{font-size:11px;color:#888}
+.rep-bar-bg{background:#f0f2f5;border-radius:3px;height:4px;margin-top:5px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;font-size:11px;color:#666}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.charts-row,.bottom-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>Sales Dashboard</h1>
+<p class="subtitle">FY 2024 — Interactive performance overview</p>
+
+<div class="filter-row">
+  <span class="filter-label">Period:</span>
+  <button class="pill active" onclick="setFilter('all',this)">All 2024</button>
+  <button class="pill" onclick="setFilter('H1',this)">H1</button>
+  <button class="pill" onclick="setFilter('H2',this)">H2</button>
+  <button class="pill" onclick="setFilter('Q4',this)">Q4</button>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub pos" id="kpi-rev-s">—</div></div>
+  <div class="kpi"><div class="kpi-label">Total Profit</div><div class="kpi-value" id="kpi-profit">—</div><div class="kpi-sub" id="kpi-margin">—</div></div>
+  <div class="kpi"><div class="kpi-label">Total Orders</div><div class="kpi-value" id="kpi-orders">—</div><div class="kpi-sub" id="kpi-aov">—</div></div>
+  <div class="kpi"><div class="kpi-label">Units Sold</div><div class="kpi-value" id="kpi-units">—</div><div class="kpi-sub" id="kpi-cat">—</div></div>
+</div>
+
+<div class="charts-row">
+  <div class="card">
+    <div class="card-title">Monthly Revenue &amp; Profit</div>
+    <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px">
+      <span style="display:flex;align-items:center;gap:5px"><span class="dot" style="background:#378ADD44;border:1.5px solid #378ADD"></span>Revenue</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="dot" style="background:#1D9E75"></span>Profit</span>
+    </div>
+    <div class="chart-wrap" style="height:220px"><canvas id="lineChart" role="img" aria-label="Monthly revenue and profit bar chart">Monthly revenue and profit for 2024.</canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Revenue by Category</div>
+    <div class="legend" id="pie-legend"></div>
+    <div class="chart-wrap" style="height:180px"><canvas id="pieChart" role="img" aria-label="Revenue donut chart by product category">Revenue share by category.</canvas></div>
+  </div>
+</div>
+
+<div class="bottom-row">
+  <div class="card">
+    <div class="card-title">Revenue by Region</div>
+    <div id="region-bars"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Top Salespeople</div>
+    <div id="rep-list"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Customer Segments</div>
+    <div id="segment-bars"></div>
+  </div>
+</div>
+
+<script>
+const RAW=[
+{date:'2024-01-05',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:12,revenue:59988,profit:23995,seg:'Enterprise'},
+{date:'2024-01-08',rep:'Ravi Kumar',region:'South',cat:'Apparel',units:30,revenue:75000,profit:37500,seg:'Retail'},
+{date:'2024-01-12',rep:'Priya Sharma',region:'East',cat:'Home & Kitchen',units:8,revenue:68000,profit:27200,seg:'Enterprise'},
+{date:'2024-01-15',rep:'Arjun Singh',region:'West',cat:'Electronics',units:45,revenue:89955,profit:35982,seg:'SMB'},
+{date:'2024-01-18',rep:'Aisha Mehta',region:'North',cat:'Sports',units:60,revenue:47940,profit:23970,seg:'Retail'},
+{date:'2024-01-22',rep:'Ravi Kumar',region:'South',cat:'Electronics',units:20,revenue:459980,profit:183992,seg:'Enterprise'},
+{date:'2024-01-25',rep:'Priya Sharma',region:'East',cat:'Apparel',units:35,revenue:112000,profit:44800,seg:'SMB'},
+{date:'2024-02-02',rep:'Arjun Singh',region:'West',cat:'Home & Kitchen',units:15,revenue:284985,profit:113994,seg:'Enterprise'},
+{date:'2024-02-06',rep:'Aisha Mehta',region:'North',cat:'Sports',units:25,revenue:137475,profit:54990,seg:'Retail'},
+{date:'2024-02-10',rep:'Ravi Kumar',region:'South',cat:'Electronics',units:10,revenue:349990,profit:139996,seg:'Enterprise'},
+{date:'2024-02-14',rep:'Priya Sharma',region:'East',cat:'Home & Kitchen',units:40,revenue:139960,profit:55984,seg:'SMB'},
+{date:'2024-02-18',rep:'Arjun Singh',region:'West',cat:'Apparel',units:18,revenue:135000,profit:54000,seg:'Retail'},
+{date:'2024-02-22',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:7,revenue:385000,profit:154000,seg:'Enterprise'},
+{date:'2024-02-26',rep:'Ravi Kumar',region:'South',cat:'Sports',units:5,revenue:225000,profit:90000,seg:'SMB'},
+{date:'2024-03-03',rep:'Priya Sharma',region:'East',cat:'Apparel',units:22,revenue:92400,profit:36960,seg:'Retail'},
+{date:'2024-03-07',rep:'Arjun Singh',region:'West',cat:'Electronics',units:55,revenue:164945,profit:65978,seg:'SMB'},
+{date:'2024-03-11',rep:'Aisha Mehta',region:'North',cat:'Home & Kitchen',units:38,revenue:106362,profit:42545,seg:'Retail'},
+{date:'2024-03-15',rep:'Ravi Kumar',region:'South',cat:'Electronics',units:14,revenue:559986,profit:223994,seg:'Enterprise'},
+{date:'2024-03-19',rep:'Priya Sharma',region:'East',cat:'Sports',units:50,revenue:60000,profit:24000,seg:'Retail'},
+{date:'2024-03-23',rep:'Arjun Singh',region:'West',cat:'Apparel',units:75,revenue:135000,profit:54000,seg:'SMB'},
+{date:'2024-04-02',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:30,revenue:899970,profit:359988,seg:'Enterprise'},
+{date:'2024-04-06',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:20,revenue:190000,profit:76000,seg:'SMB'},
+{date:'2024-04-10',rep:'Priya Sharma',region:'East',cat:'Sports',units:42,revenue:63000,profit:25200,seg:'Retail'},
+{date:'2024-04-14',rep:'Arjun Singh',region:'West',cat:'Apparel',units:90,revenue:62910,profit:25164,seg:'Retail'},
+{date:'2024-04-18',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:25,revenue:149975,profit:59990,seg:'SMB'},
+{date:'2024-04-22',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:8,revenue:199992,profit:79997,seg:'Enterprise'},
+{date:'2024-04-26',rep:'Priya Sharma',region:'East',cat:'Apparel',units:15,revenue:67500,profit:27000,seg:'SMB'},
+{date:'2024-05-03',rep:'Arjun Singh',region:'West',cat:'Sports',units:33,revenue:72600,profit:29040,seg:'Retail'},
+{date:'2024-05-07',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:6,revenue:390000,profit:156000,seg:'Enterprise'},
+{date:'2024-05-11',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:28,revenue:251972,profit:100789,seg:'SMB'},
+{date:'2024-05-15',rep:'Priya Sharma',region:'East',cat:'Electronics',units:32,revenue:255968,profit:102387,seg:'SMB'},
+{date:'2024-05-19',rep:'Arjun Singh',region:'West',cat:'Apparel',units:48,revenue:72000,profit:28800,seg:'Retail'},
+{date:'2024-05-23',rep:'Aisha Mehta',region:'North',cat:'Sports',units:20,revenue:70000,profit:28000,seg:'Retail'},
+{date:'2024-05-27',rep:'Ravi Kumar',region:'South',cat:'Electronics',units:12,revenue:227988,profit:91195,seg:'Enterprise'},
+{date:'2024-06-02',rep:'Priya Sharma',region:'East',cat:'Home & Kitchen',units:16,revenue:200000,profit:80000,seg:'SMB'},
+{date:'2024-06-06',rep:'Arjun Singh',region:'West',cat:'Sports',units:28,revenue:78400,profit:31360,seg:'Retail'},
+{date:'2024-06-10',rep:'Aisha Mehta',region:'North',cat:'Apparel',units:22,revenue:132000,profit:52800,seg:'Retail'},
+{date:'2024-06-14',rep:'Ravi Kumar',region:'South',cat:'Electronics',units:65,revenue:129935,profit:51974,seg:'Retail'},
+{date:'2024-06-18',rep:'Priya Sharma',region:'East',cat:'Home & Kitchen',units:5,revenue:175000,profit:70000,seg:'Enterprise'},
+{date:'2024-06-22',rep:'Arjun Singh',region:'West',cat:'Sports',units:80,revenue:39920,profit:15968,seg:'Retail'},
+{date:'2024-07-03',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:18,revenue:161982,profit:64793,seg:'SMB'},
+{date:'2024-07-07',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:7,revenue:294000,profit:117600,seg:'Enterprise'},
+{date:'2024-07-11',rep:'Priya Sharma',region:'East',cat:'Apparel',units:55,revenue:66000,profit:26400,seg:'Retail'},
+{date:'2024-07-15',rep:'Arjun Singh',region:'West',cat:'Sports',units:70,revenue:41930,profit:16772,seg:'Retail'},
+{date:'2024-07-19',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:4,revenue:300000,profit:120000,seg:'Enterprise'},
+{date:'2024-07-23',rep:'Ravi Kumar',region:'South',cat:'Apparel',units:40,revenue:35960,profit:14384,seg:'SMB'},
+{date:'2024-07-27',rep:'Priya Sharma',region:'East',cat:'Home & Kitchen',units:18,revenue:117000,profit:46800,seg:'SMB'},
+{date:'2024-08-03',rep:'Arjun Singh',region:'West',cat:'Sports',units:25,revenue:49975,profit:19990,seg:'Retail'},
+{date:'2024-08-07',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:42,revenue:125958,profit:50383,seg:'SMB'},
+{date:'2024-08-11',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:9,revenue:252000,profit:100800,seg:'Enterprise'},
+{date:'2024-08-15',rep:'Priya Sharma',region:'East',cat:'Apparel',units:60,revenue:48000,profit:19200,seg:'Retail'},
+{date:'2024-08-19',rep:'Arjun Singh',region:'West',cat:'Sports',units:35,revenue:45465,profit:18186,seg:'Retail'},
+{date:'2024-08-23',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:20,revenue:119980,profit:47992,seg:'SMB'},
+{date:'2024-08-27',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:11,revenue:165000,profit:66000,seg:'Enterprise'},
+{date:'2024-09-03',rep:'Priya Sharma',region:'East',cat:'Sports',units:18,revenue:45000,profit:18000,seg:'SMB'},
+{date:'2024-09-07',rep:'Arjun Singh',region:'West',cat:'Electronics',units:26,revenue:415974,profit:166390,seg:'Enterprise'},
+{date:'2024-09-11',rep:'Aisha Mehta',region:'North',cat:'Apparel',units:14,revenue:77000,profit:30800,seg:'SMB'},
+{date:'2024-09-15',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:22,revenue:131978,profit:52791,seg:'SMB'},
+{date:'2024-09-19',rep:'Priya Sharma',region:'East',cat:'Electronics',units:38,revenue:132962,profit:53185,seg:'SMB'},
+{date:'2024-09-23',rep:'Arjun Singh',region:'West',cat:'Sports',units:55,revenue:21945,profit:8778,seg:'Retail'},
+{date:'2024-10-03',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:28,revenue:139972,profit:55989,seg:'SMB'},
+{date:'2024-10-07',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:34,revenue:135966,profit:54386,seg:'Retail'},
+{date:'2024-10-11',rep:'Priya Sharma',region:'East',cat:'Apparel',units:45,revenue:89955,profit:35982,seg:'Retail'},
+{date:'2024-10-15',rep:'Arjun Singh',region:'West',cat:'Sports',units:30,revenue:36000,profit:14400,seg:'Retail'},
+{date:'2024-10-19',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:16,revenue:136000,profit:54400,seg:'Enterprise'},
+{date:'2024-10-23',rep:'Ravi Kumar',region:'South',cat:'Apparel',units:80,revenue:48000,profit:19200,seg:'SMB'},
+{date:'2024-10-27',rep:'Priya Sharma',region:'East',cat:'Home & Kitchen',units:29,revenue:101500,profit:40600,seg:'SMB'},
+{date:'2024-11-03',rep:'Arjun Singh',region:'West',cat:'Sports',units:50,revenue:99950,profit:39980,seg:'Retail'},
+{date:'2024-11-07',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:10,revenue:120000,profit:48000,seg:'Enterprise'},
+{date:'2024-11-11',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:36,revenue:107964,profit:43186,seg:'Retail'},
+{date:'2024-11-15',rep:'Priya Sharma',region:'East',cat:'Apparel',units:25,revenue:87500,profit:35000,seg:'Retail'},
+{date:'2024-11-19',rep:'Arjun Singh',region:'West',cat:'Sports',units:90,revenue:17910,profit:7164,seg:'Retail'},
+{date:'2024-11-23',rep:'Aisha Mehta',region:'North',cat:'Electronics',units:20,revenue:69980,profit:27992,seg:'SMB'},
+{date:'2024-11-27',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:14,revenue:77000,profit:30800,seg:'SMB'},
+{date:'2024-12-03',rep:'Priya Sharma',region:'East',cat:'Apparel',units:18,revenue:89982,profit:35993,seg:'Retail'},
+{date:'2024-12-07',rep:'Arjun Singh',region:'West',cat:'Electronics',units:8,revenue:199992,profit:79997,seg:'Enterprise'},
+{date:'2024-12-11',rep:'Aisha Mehta',region:'North',cat:'Sports',units:22,revenue:99000,profit:39600,seg:'SMB'},
+{date:'2024-12-15',rep:'Ravi Kumar',region:'South',cat:'Home & Kitchen',units:55,revenue:54945,profit:21978,seg:'Retail'},
+{date:'2024-12-19',rep:'Priya Sharma',region:'East',cat:'Electronics',units:40,revenue:79960,profit:31984,seg:'SMB'},
+{date:'2024-12-23',rep:'Arjun Singh',region:'West',cat:'Apparel',units:65,revenue:58435,profit:23374,seg:'Retail'}
+];
+
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const CAT_COLORS={'Electronics':'#378ADD','Apparel':'#D4537E','Home & Kitchen':'#1D9E75','Sports':'#EF9F27'};
+const REP_COLORS={'Aisha Mehta':'#7F77DD','Ravi Kumar':'#378ADD','Priya Sharma':'#1D9E75','Arjun Singh':'#D85A30'};
+const SEG_COLORS={'Enterprise':'#378ADD','SMB':'#1D9E75','Retail':'#EF9F27'};
+
+let lineChart,pieChart;
+
+function filterData(f){
+  return RAW.filter(d=>{
+    const m=parseInt(d.date.split('-')[1]);
+    if(f==='H1')return m<=6;
+    if(f==='H2')return m>=7;
+    if(f==='Q4')return m>=10;
+    return true;
+  });
+}
+
+function fmt(n){
+  if(n>=1e7)return '₹'+(n/1e7).toFixed(1)+'Cr';
+  if(n>=1e5)return '₹'+(n/1e5).toFixed(1)+'L';
+  return '₹'+n.toLocaleString('en-IN');
+}
+
+function renderBars(id,data,colorFn){
+  const max=Math.max(...Object.values(data));
+  document.getElementById(id).innerHTML=Object.entries(data).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div class="bar-item">
+      <div class="bar-meta"><span class="bar-name">${k}</span><span class="bar-val">${fmt(v)}</span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:${colorFn(k)}"></div></div>
+    </div>`).join('');
+}
+
+function renderReps(data){
+  const max=Math.max(...Object.values(data).map(d=>d.rev));
+  document.getElementById('rep-list').innerHTML=Object.entries(data).sort((a,b)=>b[1].rev-a[1].rev).map(([k,v])=>{
+    const ini=k.split(' ').map(w=>w[0]).join('');
+    const c=REP_COLORS[k]||'#888';
+    return `<div class="rep-row">
+      <div class="avatar" style="background:${c}22;color:${c}">${ini}</div>
+      <div style="flex:1">
+        <div class="rep-name">${k}</div>
+        <div class="rep-rev">${fmt(v.rev)} · ${v.orders} orders</div>
+        <div class="rep-bar-bg"><div class="bar-fill" style="width:${Math.round(v.rev/max*100)}%;height:4px;background:${c};border-radius:3px"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function render(filter){
+  const data=filterData(filter);
+  const totRev=data.reduce((s,d)=>s+d.revenue,0);
+  const totProfit=data.reduce((s,d)=>s+d.profit,0);
+  const totUnits=data.reduce((s,d)=>s+d.units,0);
+  const margin=Math.round(totProfit/totRev*100);
+
+  document.getElementById('kpi-rev').textContent=fmt(totRev);
+  document.getElementById('kpi-rev-s').textContent=data.length+' orders total';
+  document.getElementById('kpi-profit').textContent=fmt(totProfit);
+  document.getElementById('kpi-margin').textContent=margin+'% net margin';
+  document.getElementById('kpi-orders').textContent=data.length;
+  document.getElementById('kpi-aov').textContent='AOV '+fmt(Math.round(totRev/data.length));
+  document.getElementById('kpi-units').textContent=totUnits.toLocaleString();
+  document.getElementById('kpi-cat').textContent='Across 5 categories';
+
+  const byMonth={};
+  MONTHS.forEach((_,i)=>{byMonth[i+1]={rev:0,profit:0}});
+  data.forEach(d=>{const m=parseInt(d.date.split('-')[1]);byMonth[m].rev+=d.revenue;byMonth[m].profit+=d.profit});
+  const activeMonths=filter==='all'?[1,2,3,4,5,6,7,8,9,10,11,12]:filter==='H1'?[1,2,3,4,5,6]:filter==='H2'?[7,8,9,10,11,12]:[10,11,12];
+
+  if(lineChart)lineChart.destroy();
+  lineChart=new Chart(document.getElementById('lineChart'),{
+    type:'bar',
+    data:{
+      labels:activeMonths.map(m=>MONTHS[m-1]),
+      datasets:[
+        {label:'Revenue',data:activeMonths.map(m=>Math.round(byMonth[m].rev/1000)),backgroundColor:'#378ADD44',borderColor:'#378ADD',borderWidth:1.5,borderRadius:4},
+        {label:'Profit',data:activeMonths.map(m=>Math.round(byMonth[m].profit/1000)),backgroundColor:'#1D9E75',borderColor:'#1D9E75',borderWidth:0,borderRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{size:11},callback:v=>'₹'+v+'K'}}}}
+  });
+
+  const byCat={};
+  data.forEach(d=>{byCat[d.cat]=(byCat[d.cat]||0)+d.revenue});
+  const catKeys=Object.keys(byCat);
+  const catColors=catKeys.map(k=>CAT_COLORS[k]||'#888');
+  document.getElementById('pie-legend').innerHTML=catKeys.map((k,i)=>`<span><span class="dot" style="background:${catColors[i]}"></span>${k}: ${Math.round(byCat[k]/totRev*100)}%</span>`).join('');
+
+  if(pieChart)pieChart.destroy();
+  pieChart=new Chart(document.getElementById('pieChart'),{
+    type:'doughnut',
+    data:{labels:catKeys,datasets:[{data:catKeys.map(k=>byCat[k]),backgroundColor:catColors,borderWidth:3,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}
+  });
+
+  const byRegion={};data.forEach(d=>{byRegion[d.region]=(byRegion[d.region]||0)+d.revenue});
+  renderBars('region-bars',byRegion,()=>'#378ADD');
+
+  const byRep={};
+  data.forEach(d=>{if(!byRep[d.rep])byRep[d.rep]={rev:0,orders:0};byRep[d.rep].rev+=d.revenue;byRep[d.rep].orders++});
+  renderReps(byRep);
+
+  const bySeg={};data.forEach(d=>{bySeg[d.seg]=(bySeg[d.seg]||0)+d.revenue});
+  renderBars('segment-bars',bySeg,k=>SEG_COLORS[k]||'#888');
+}
+
+function setFilter(f,btn){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  render(f);
+}
+
+render('all');
+</script>
+</body>
+</html>
